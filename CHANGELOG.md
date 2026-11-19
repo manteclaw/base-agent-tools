@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.2 — 2026-11-19
+
+Re-bundled skill docs updated to the patched v1.0.2 versions:
+
+- `mev-protection-scanner`: the `ALCHEMY_API_KEY` / `--alchemy-key` path
+  is gone (v1.0.1 rescan: CRITICAL TT3 + SDI-4); endpoint is a whole URL
+  only, never printed.
+- `gas-price-predictor`, `agent-health-monitor`: declared tool scope in
+  the frontmatter (`permissions`), clearing the LP3 / LP1 findings.
+
+No plugin code changes in 1.0.2 — the TypeScript tools are identical to
+1.0.1.
+
 ## 1.0.1 — 2026-11-19
 
 Security fix for ClawScan's v1.0.0 finding (verdict: suspicious):
