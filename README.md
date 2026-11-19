@@ -56,6 +56,12 @@ block freshness, and an optional wallet's ETH balance against a minimum
   surrounding blocks, not a bot registry or an ML filter.
 - **No live ETH price.** USD estimates use the `ethPriceUsd` you pass
   (default 3000) — treat them as rough.
+- **Error results are generic by design.** If the RPC request fails, the
+  tool returns a fixed message ("Base RPC request failed. Try again
+  later.") and the specific upstream error goes to the gateway log only.
+  Upstream RPC error text is untrusted — a compromised endpoint could put
+  instructions in it — so it is never passed through to the model as tool
+  output. (Security fix in 1.0.1 for ClawScan's v1.0.0 finding.)
 
 ## Configuration
 
