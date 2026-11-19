@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4 — 2026-11-19
+
+Re-bundled `mev-protection-scanner` doc updated to the patched v1.0.3
+version (endpoint resolution restructured to match `gas-price-predictor`;
+slippage comment corrected). No plugin code changes in 1.0.4 — the
+TypeScript tools are identical to 1.0.1.
+
 ## 1.0.3 — 2026-11-19
 
 Re-bundled skill docs updated to the patched v1.0.3 versions (independent
