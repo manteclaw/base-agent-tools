@@ -1,6 +1,7 @@
 ---
 name: mev-protection-scanner
-description: Detect and protect against MEV attacks on Base L2 including sandwich attacks, frontrunning, and backrunning. Monitors mempool for toxic transaction patterns, simulates attack profitability, and suggests protection strategies. Use when an agent needs to secure DeFi transactions, analyze mempool threats, or understand MEV risks on Base L2.
+version: 1.0.1
+description: Detect and protect against MEV attacks on Base L2 including sandwich attacks, frontrunning, and backrunning. Analyzes confirmed transactions from recent blocks for sandwich patterns, simulates attack profitability, and suggests protection strategies. Use when an agent needs to assess MEV risk on a Base L2 transaction or understand MEV risks on Base L2.
 ---
 > **Plugin note:** this skill doc ships inside the `manteclaw-base-agent-tools` ClawHub plugin, which provides the same capabilities as native agent tools (no Python, no API keys, no transaction execution). The `.py` and shell scripts named below belong to the standalone skill on ClawHub and are not bundled in the plugin — the plugin implements them in TypeScript. Full skill: https://clawhub.ai/manteclaw/skills/mev-protection-scanner
 
@@ -9,25 +10,27 @@ description: Detect and protect against MEV attacks on Base L2 including sandwic
 
 ## Overview
 
-Real-time MEV threat detection for Base L2 transactions. Identifies sandwich attack patterns, frontrunning bots, and toxic mempool transactions before they impact your trades.
+MEV threat detection for Base L2 transactions. Identifies sandwich attack patterns and frontrunning indicators in confirmed transactions by analyzing surrounding blocks.
 
 ## Core Capabilities
 
 ### 1. Sandwich Attack Detection
 
-- Monitors mempool for large pending swaps
+- Analyzes confirmed transactions and surrounding blocks for sandwich patterns
 - Detects bot patterns: victim tx → attacker buy → attacker sell
 - Calculates attack profitability (slippage extraction)
 - Risk score: 0-100 based on position size + pool liquidity
 
-### 2. Frontrunning Protection
+### 2. Frontrunning Indicators
 
 - Identifies gas-price escalation patterns
 - Detects duplicate transactions with higher gas
 - Suggests private mempool submission (Flashbots Protect)
 - Estimate "true cost" of trade with MEV extraction
 
-### 3. Mempool Toxicity Scanner
+### 3. Mempool Threat Patterns
+
+Reference patterns to watch for — the scanner does not watch a live mempool, so these are what to look for, not what the tool detects in real time:
 
 | Pattern | Detection | Risk Level |
 |---------|-----------|------------|
@@ -50,31 +53,26 @@ Real-time MEV threat detection for Base L2 transactions. Identifies sandwich att
 ### Single Transaction Check
 
 ```bash
-python3 scripts/mev_scanner.py --check --tx-hash 0x...
+python3 scripts/mev_scanner.py --check 0x...
 ```
 
-### Mempool Monitor
+### Sandwich Simulation
 
 ```bash
-python3 scripts/mev_scanner.py --monitor --pool "0x..." --min-value 5000
+python3 scripts/mev_scanner.py --simulate 1.5 --slippage 0.5
 ```
 
-### Risk Report
+### Configuration
 
-```bash
-python3 scripts/mev_scanner.py --report --wallet 0x... --days 7
-```
+The scanner uses the public Base RPC endpoint `https://mainnet.base.org` by default — no API key required. To use a different endpoint, set `BASE_RPC_URL` or pass `--rpc-url`. To use Alchemy instead, set `ALCHEMY_API_KEY` or pass `--alchemy-key`; no key is hardcoded or defaulted anywhere in this skill.
 
 ## Scripts
 
-- `scripts/mev_scanner.py` — Main scanner with detection engine
-- `scripts/mempool_monitor.py` — Real-time WebSocket mempool watcher
-- `scripts/sandwich_simulator.py` — Simulate attack profitability
+- `scripts/mev_scanner.py` — Main scanner with detection engine (transaction check + sandwich simulation)
 
 ## References
 
 - `references/mev-patterns.md` — Known MEV bot signatures on Base
-- `references/protection-guide.md` — Defense strategies and RPC endpoints
 
 ## Earnings Model
 
@@ -84,14 +82,27 @@ python3 scripts/mev_scanner.py --report --wallet 0x... --days 7
 
 ## Safety
 
-- Read-only mempool analysis — no transaction execution
-- Simulations run in forked environment
-- No private key access required
-- False positive rate < 5% via machine learning filter
+- Read-only analysis — no transaction execution, no signing, no private key access
+- Only queries a Base JSON-RPC endpoint (`eth_getTransactionByHash`, `eth_getBlockByNumber`); it does not monitor a live mempool and does not submit anything anywhere
+- Sandwich simulation is a simple arithmetic model run locally, not a forked-environment simulation
+- Detection is heuristic only (see `references/mev-patterns.md` for accuracy); there is no machine-learning filter — treat scores as a guide, not a guarantee
+- Transaction hashes are validated (`0x` + 64 hex characters) before any RPC call, and malformed RPC responses are treated as missing data rather than crashing the scanner
+- Network scope: the only network destination is the configured Base JSON-RPC endpoint (default `https://mainnet.base.org`). The only data sent is the RPC method name plus a transaction hash or block number. No private keys, wallet secrets, or personal data are transmitted. If you supply an Alchemy key, it is sent only to Alchemy as part of the endpoint URL.
 
 ## Integration
 
 Pair with `gas-price-predictor` for complete transaction optimization:
 1. Check MEV risk with this skill
 2. If safe, check optimal gas with gas-price-predictor
-3. Execute with protection settings
+3. This skill never executes a transaction. A low risk score is not permission to trade: any trade must go through a separate execution step with your explicit approval, since on-chain execution is irreversible and incurs non-refundable fees.
+
+## Changelog
+
+### 1.0.1 — 2026-11-18 (security fixes)
+- Removed the Alchemy-only RPC endpoint and the `"demo"` API-key fallback: the scanner now defaults to the public no-key Base RPC (`https://mainnet.base.org`), with the endpoint configurable via `BASE_RPC_URL` / `--rpc-url` and an Alchemy key accepted only via `ALCHEMY_API_KEY` / `--alchemy-key`.
+- Added transaction-hash validation (`0x` + 64 hex characters) before any RPC call.
+- Hardened RPC response handling: malformed or non-object responses are treated as missing data instead of raising uncaught exceptions.
+- Added input validation for `--simulate` (must be > 0) and `--slippage` (0–100).
+- Removed references to scripts and docs that never shipped (`scripts/mempool_monitor.py`, `scripts/sandwich_simulator.py`, `references/protection-guide.md`) and corrected workflow examples to the flags the script actually supports.
+- Corrected overstated claims: no live mempool monitoring, no forked-environment simulation, no machine-learning filter. The description and section headings now say retrospective heuristic analysis, and the Integration workflow no longer instructs transaction execution — it states this skill never executes and a low risk score is not permission to trade.
+- Documented the network scope in Safety: the only destination is the configured Base JSON-RPC endpoint, and only a method name plus tx hash/block number are sent.
