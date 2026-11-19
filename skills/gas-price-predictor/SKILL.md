@@ -1,6 +1,6 @@
 ---
 name: gas-price-predictor
-version: 1.0.2
+version: 1.0.3
 permissions:
   - env
   - network
@@ -130,6 +130,10 @@ endpoints are accepted.
   of untrusted data, no transaction signing or submission.
 
 ## Changelog
+
+### v1.0.3 — 2026-11-19 (vetting follow-up)
+
+- Fixed an error-text credential leak (independent vetting F1): `_rpc_call` printed the raw `requests` exception, which includes the full request URL — and a keyed provider URL carries the key in its path. RPC failures now print a fixed message only (`RPC error: request failed`); the validator no longer echoes the URL in its error and `main()` prints a fixed message for an invalid endpoint. Same defect class as the MEV SDI-4 fixed in v1.0.2.
 
 ### v1.0.2 — 2026-11-19 (rescan follow-up)
 
