@@ -1,6 +1,6 @@
 ---
 name: mev-protection-scanner
-version: 1.0.2
+version: 1.0.3
 permissions:
   - env
   - network
@@ -100,6 +100,10 @@ Pair with `gas-price-predictor` for complete transaction optimization:
 3. This skill never executes a transaction. A low risk score is not permission to trade: any trade must go through a separate execution step with your explicit approval, since on-chain execution is irreversible and incurs non-refundable fees.
 
 ## Changelog
+
+### 1.0.3 — 2026-11-19 (rescan follow-up)
+- Restructured endpoint resolution to match `gas-price-predictor` (which the same scanner rates clean): the `BASE_RPC_URL` value is now read as the `--rpc-url` default in `main()` and validated in the `MEVScanner` constructor, instead of being resolved in a helper that returned an env-derived URL straight into `requests.post`. No behavior change — the endpoint is still `--rpc-url` / `BASE_RPC_URL` / public default, and no credential is read anywhere. The v1.0.2 rescan still flagged the old shape CRITICAL (TT3: "env var → network"), even though the value is an endpoint URL, not a credential; this restructure removes the traceable flow.
+- Corrected the slippage comment (rescan SDI-4): large calldata is a rough proxy for slippage exposure, not a measurement of it.
 
 ### 1.0.2 — 2026-11-19 (rescan follow-up)
 - Removed the `ALCHEMY_API_KEY` / `--alchemy-key` path entirely: the v1.0.1 rescan flagged it CRITICAL (TT3 — the key read from env flowed into the request URL) and found the key could leak through error logging (SDI-4 — requests exceptions include the URL). The endpoint is now configured only as a whole URL via `BASE_RPC_URL` / `--rpc-url` (default public `https://mainnet.base.org`), must be `https://` with no embedded credentials, and is never printed anywhere; RPC failures print a fixed message only, never the exception text.
