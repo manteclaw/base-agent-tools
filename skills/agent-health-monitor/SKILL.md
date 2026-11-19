@@ -1,7 +1,7 @@
 ---
 name: agent-health-monitor
 description: Health monitoring for AI agent infrastructure. Checks API key validity, wallet gas balances, and service endpoint reachability, and sends threshold-based alerts via Telegram/Discord. No mining, earning, revenue reporting, or background workers — this skill only observes and alerts.
-version: 1.0.2
+version: 1.0.3
 allowed-tools: Read, Bash
 permissions:
   - env
@@ -92,6 +92,8 @@ Monitors ETH gas balances of the configured wallets (`scripts/balance-monitor.py
 - Executor wallet (`EXECUTOR_ADDRESS`)
 - Two additional wallets (`WALLET_ADDRESS_1`, `WALLET_ADDRESS_2`)
 
+Wallets left unconfigured are skipped, not checked. (Before v1.0.3 the two extra wallets defaulted to the zero address, which always reported LOW.)
+
 Alerts when a balance falls below the threshold (default 0.005 ETH, set `GAS_ALERT_THRESHOLD` to change it).
 
 ### 3. Service Endpoint Checks
@@ -111,6 +113,9 @@ Alerts when a balance falls below the threshold (default 0.005 ETH, set `GAS_ALE
 ### Setup
 
 ```bash
+# 0. Install the Python dependencies (see requirements.txt)
+pip install -r requirements.txt
+
 # 1. Configure alerts (see the Privacy warning above first)
 export TELEGRAM_BOT_TOKEN=...
 export TELEGRAM_CHAT_ID=...
@@ -121,12 +126,12 @@ export ALCHEMY_API_KEY=...
 export GROQ_API_KEY=...
 export EXECUTOR_ADDRESS=...
 
-# 3. Run a check (no install step, no sudo, nothing runs in the background)
+# 3. Run a check (no sudo, nothing runs in the background)
 python3 scripts/healthcheck.py
 python3 scripts/master_monitor.py
 ```
 
-Optional: run `scripts/master_monitor.py` from cron every 5 minutes for continuous monitoring. The skill itself installs nothing.
+Optional: run `scripts/master_monitor.py` from cron every 5 minutes for continuous monitoring. The skill itself installs no services or daemons — the only install is the `pip` command above. The Bankr check needs the optional `litcoin` SDK (see `requirements.txt`); without it that check reports "SDK not installed" and skips.
 
 ### Daily Operations
 
@@ -165,6 +170,7 @@ python3 scripts/balance-monitor.py
 
 - `references/alert-config.md` — Channel setup and webhook formats
 - `CONFIGURATION.md` — Every environment variable the skill reads
+- `requirements.txt` — Python dependencies (`pip install -r requirements.txt`)
 
 ## Stats
 
@@ -174,6 +180,12 @@ python3 scripts/balance-monitor.py
 - **0 credential files read** — env vars only
 
 ## Changelog
+
+### v1.0.3 — 2026-11-19 (vetting follow-up)
+
+- **Fixed phantom low-gas alerts (F1):** `balance-monitor.py` defaulted the two extra wallets to the zero address, which is a valid address with a 0 balance, so every default-config run reported two false LOW wallets. Unconfigured wallets are now skipped (empty default, same as `EXECUTOR_ADDRESS`), and the dead-lane label "AWP / Old" is renamed "Additional Wallet".
+- **Fixed silent pass on a crashed sub-check (F2):** `master_monitor.py` only recorded an issue when the balance monitor's stdout contained "LOW" or "error", so a crash (e.g. `web3` not installed) with empty stdout was reported as "All systems nominal" with exit 0. A nonzero exit with no parsed issue line now records "balance monitor failed to run (exit code N)" and exits nonzero.
+- **Added dependency documentation (F3):** new `requirements.txt` (`web3`, `eth-account`; optional `python-telegram-bot`, `litcoin`) and a `pip install -r requirements.txt` step in Setup. The old "no install step" claim was false on a bare machine. The Bankr check's `litcoin` SDK requirement is now stated in Setup and `CONFIGURATION.md`.
 
 ### v1.0.2 — 2026-11-19 (rescan follow-up)
 
