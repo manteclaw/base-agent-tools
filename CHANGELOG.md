@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.3 — 2026-11-19
+
+Re-bundled skill docs updated to the patched v1.0.3 versions (independent
+pre-publish vetting follow-ups):
+
+- `gas-price-predictor`: RPC failures now print a fixed message only —
+  the raw `requests` exception could leak a keyed provider URL.
+- `agent-health-monitor`: unconfigured wallets are skipped instead of
+  reporting phantom LOW gas; a crashed balance check is reported as a
+  failure, never a pass; `requirements.txt` + install step documented.
+
+No plugin code changes in 1.0.3 — the TypeScript tools are identical to
+1.0.1.
+
 ## 1.0.2 — 2026-11-19
 
 Re-bundled skill docs updated to the patched v1.0.2 versions:
