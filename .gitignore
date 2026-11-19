@@ -1,0 +1,7 @@
+node_modules/
+dist/
+validate-reports/
+validate-reports-static/
+validate-reports-runtime/
+*.tgz
+.env
