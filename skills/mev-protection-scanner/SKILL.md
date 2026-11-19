@@ -1,6 +1,9 @@
 ---
 name: mev-protection-scanner
-version: 1.0.1
+version: 1.0.2
+permissions:
+  - env
+  - network
 description: Detect and protect against MEV attacks on Base L2 including sandwich attacks, frontrunning, and backrunning. Analyzes confirmed transactions from recent blocks for sandwich patterns, simulates attack profitability, and suggests protection strategies. Use when an agent needs to assess MEV risk on a Base L2 transaction or understand MEV risks on Base L2.
 ---
 > **Plugin note:** this skill doc ships inside the `manteclaw-base-agent-tools` ClawHub plugin, which provides the same capabilities as native agent tools (no Python, no API keys, no transaction execution). The `.py` and shell scripts named below belong to the standalone skill on ClawHub and are not bundled in the plugin — the plugin implements them in TypeScript. Full skill: https://clawhub.ai/manteclaw/skills/mev-protection-scanner
@@ -64,7 +67,7 @@ python3 scripts/mev_scanner.py --simulate 1.5 --slippage 0.5
 
 ### Configuration
 
-The scanner uses the public Base RPC endpoint `https://mainnet.base.org` by default — no API key required. To use a different endpoint, set `BASE_RPC_URL` or pass `--rpc-url`. To use Alchemy instead, set `ALCHEMY_API_KEY` or pass `--alchemy-key`; no key is hardcoded or defaulted anywhere in this skill.
+The scanner uses the public Base RPC endpoint `https://mainnet.base.org` by default — no API key required. To use a different endpoint, set `BASE_RPC_URL` or pass `--rpc-url` (must be `https://`, no embedded credentials). No API key is read, assembled, hardcoded, or defaulted anywhere in this skill; a keyed provider URL may be supplied whole as the endpoint if the operator chooses, but the script never prints the endpoint or any request error text.
 
 ## Scripts
 
@@ -87,7 +90,7 @@ The scanner uses the public Base RPC endpoint `https://mainnet.base.org` by defa
 - Sandwich simulation is a simple arithmetic model run locally, not a forked-environment simulation
 - Detection is heuristic only (see `references/mev-patterns.md` for accuracy); there is no machine-learning filter — treat scores as a guide, not a guarantee
 - Transaction hashes are validated (`0x` + 64 hex characters) before any RPC call, and malformed RPC responses are treated as missing data rather than crashing the scanner
-- Network scope: the only network destination is the configured Base JSON-RPC endpoint (default `https://mainnet.base.org`). The only data sent is the RPC method name plus a transaction hash or block number. No private keys, wallet secrets, or personal data are transmitted. If you supply an Alchemy key, it is sent only to Alchemy as part of the endpoint URL.
+- Network scope: the only network destination is the configured Base JSON-RPC endpoint (default `https://mainnet.base.org`). The only data sent is the RPC method name plus a transaction hash or block number. No private keys, wallet secrets, or personal data are transmitted. The endpoint URL is never printed in output, logs, or error messages, so a key embedded in an operator-supplied endpoint URL cannot leak through diagnostics.
 
 ## Integration
 
@@ -97,6 +100,10 @@ Pair with `gas-price-predictor` for complete transaction optimization:
 3. This skill never executes a transaction. A low risk score is not permission to trade: any trade must go through a separate execution step with your explicit approval, since on-chain execution is irreversible and incurs non-refundable fees.
 
 ## Changelog
+
+### 1.0.2 — 2026-11-19 (rescan follow-up)
+- Removed the `ALCHEMY_API_KEY` / `--alchemy-key` path entirely: the v1.0.1 rescan flagged it CRITICAL (TT3 — the key read from env flowed into the request URL) and found the key could leak through error logging (SDI-4 — requests exceptions include the URL). The endpoint is now configured only as a whole URL via `BASE_RPC_URL` / `--rpc-url` (default public `https://mainnet.base.org`), must be `https://` with no embedded credentials, and is never printed anywhere; RPC failures print a fixed message only, never the exception text.
+- Declared the tool scope in machine-readable form (`permissions: [env, network]` in the frontmatter) so the scanner no longer flags undeclared scope (LP3).
 
 ### 1.0.1 — 2026-11-18 (security fixes)
 - Removed the Alchemy-only RPC endpoint and the `"demo"` API-key fallback: the scanner now defaults to the public no-key Base RPC (`https://mainnet.base.org`), with the endpoint configurable via `BASE_RPC_URL` / `--rpc-url` and an Alchemy key accepted only via `ALCHEMY_API_KEY` / `--alchemy-key`.
