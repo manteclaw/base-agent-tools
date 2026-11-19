@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.0.1 — 2026-11-19
+
+Security fix for ClawScan's v1.0.0 finding (verdict: suspicious):
+upstream RPC error text could reach the model as tool output, a
+prompt-injection channel.
+
+- `src/rpc.ts`: RPC failures now raise fixed messages only. A JSON-RPC
+  error response surfaces at most its numeric error code; fetch/timeout/
+  parse failures surface a fixed message. Upstream error text is never
+  attached to a thrown error.
+- `src/index.ts`: tool catch blocks return a fixed "Base RPC request
+  failed. Try again later." and log the real error server-side
+  (`console.error`, gateway log only). Validation errors no longer echo
+  the supplied `txHash` back. `tradeSizeEth`, `slippage`, and
+  `ethPriceUsd` are now validated at runtime (non-negative, finite,
+  slippage 0–100), matching their declared schemas.
+- `src/tools/health.ts`: RPC/balance failure details are fixed strings;
+  an invalid wallet address is no longer echoed back.
+- `src/tools/mev.ts`: `to_address` is only passed through when it is
+  address-shaped; anything else from the RPC response becomes `""`.
+
+Behaviour change: error results are now generic by design — the specific
+upstream error is in the gateway log, not in the tool result. Valid
+inputs produce identical results to 1.0.0.
+
 ## 1.0.0 — 2026-11-19
 
 Initial release.
