@@ -46,6 +46,22 @@ function errorResult(message: string) {
   return jsonResult({ error: message });
 }
 
+/**
+ * RPC failures return a FIXED message to the model. The real error is
+ * logged server-side (gateway log, operator-visible) and never returned:
+ * upstream RPC error text is untrusted and could carry injected
+ * instructions into the model's context (prompt-injection channel —
+ * ClawScan's finding on v1.0.0). The same rule applies to validation
+ * errors below: never echo untrusted input back in an error message.
+ */
+function rpcFailureResult(tool: string, err: unknown) {
+  console.error(
+    `[${tool}] Base RPC request failed:`,
+    err instanceof Error ? err.message : err,
+  );
+  return errorResult("Base RPC request failed. Try again later.");
+}
+
 const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
 export default definePluginEntry({
@@ -86,10 +102,13 @@ export default definePluginEntry({
           Math.max(1, Math.floor(readOptionalNumber(p, "blocks", 20))),
         );
         const ethPriceUsd = readOptionalNumber(p, "ethPriceUsd", 3000);
+        if (!Number.isFinite(ethPriceUsd) || ethPriceUsd < 0) {
+          return errorResult("ethPriceUsd must be a non-negative number.");
+        }
         try {
           return jsonResult(await predictGas(rpcUrl, blocks, ethPriceUsd));
         } catch (err) {
-          return errorResult((err as Error).message);
+          return rpcFailureResult("base_gas_predict", err);
         }
       },
     });
@@ -110,8 +129,21 @@ export default definePluginEntry({
         const p = asRecord(params);
         const txHash = readOptionalString(p, "txHash");
         const tradeSizeEth =
-          typeof p.tradeSizeEth === "number" ? p.tradeSizeEth : undefined;
+          typeof p.tradeSizeEth === "number" &&
+          Number.isFinite(p.tradeSizeEth) &&
+          p.tradeSizeEth >= 0
+            ? p.tradeSizeEth
+            : undefined;
+        if (
+          typeof p.tradeSizeEth === "number" &&
+          (!Number.isFinite(p.tradeSizeEth) || p.tradeSizeEth < 0)
+        ) {
+          return errorResult("tradeSizeEth must be a non-negative number.");
+        }
         const slippage = readOptionalNumber(p, "slippage", 0.5);
+        if (!Number.isFinite(slippage) || slippage < 0 || slippage > 100) {
+          return errorResult("slippage must be between 0 and 100.");
+        }
 
         if (txHash !== undefined && tradeSizeEth !== undefined) {
           return errorResult(
@@ -120,14 +152,15 @@ export default definePluginEntry({
         }
         if (txHash !== undefined) {
           if (!TX_HASH_RE.test(txHash)) {
+            // Fixed message — never echo the supplied value back.
             return errorResult(
-              `"${txHash}" is not a valid transaction hash (expected 0x + 64 hex chars).`,
+              "Not a valid transaction hash (expected 0x + 64 hex chars).",
             );
           }
           try {
             return jsonResult(await checkTransaction(rpcUrl, txHash));
           } catch (err) {
-            return errorResult((err as Error).message);
+            return rpcFailureResult("base_mev_scan", err);
           }
         }
         if (tradeSizeEth !== undefined) {
@@ -160,7 +193,7 @@ export default definePluginEntry({
         try {
           return jsonResult(await checkHealth(rpcUrl, walletAddress, minBalance));
         } catch (err) {
-          return errorResult((err as Error).message);
+          return rpcFailureResult("base_agent_health", err);
         }
       },
     });
