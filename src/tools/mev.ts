@@ -178,6 +178,12 @@ export async function checkTransaction(
 
   riskScore = Math.min(100, Math.max(0, riskScore));
 
+  // Only pass the destination through if it is address-shaped. The RPC
+  // response is untrusted text: a malicious endpoint could otherwise put
+  // arbitrary content into tool output via this field.
+  const toAddress = /^0x[0-9a-fA-F]{40}$/.test(tx.to ?? "")
+    ? (tx.to as string)
+    : "";
   return {
     tx_hash: txHash,
     risk_score: riskScore,
@@ -185,7 +191,7 @@ export async function checkTransaction(
     indicators,
     block_number: blockNum,
     gas_price_gwei: Math.round(gasPriceGwei * 10_000) / 10_000,
-    to_address: tx.to ?? "",
+    to_address: toAddress,
     recommendations: recommendationsFor(riskScore),
   };
 }
