@@ -1,11 +1,13 @@
 ---
 name: agent-health-monitor
 description: Health monitoring for AI agent infrastructure. Checks API key validity, wallet gas balances, and service endpoint reachability, and sends threshold-based alerts via Telegram/Discord. No mining, earning, revenue reporting, or background workers — this skill only observes and alerts.
-version: 1.0.1
+version: 1.0.2
 allowed-tools: Read, Bash
 permissions:
+  - env
+  - file_read
+  - file_write
   - network
-  - filesystem
   - shell
 ---
 > **Plugin note:** this skill doc ships inside the `manteclaw-base-agent-tools` ClawHub plugin, which provides the same capabilities as native agent tools (no Python, no API keys, no transaction execution). The `.py` and shell scripts named below belong to the standalone skill on ClawHub and are not bundled in the plugin — the plugin implements them in TypeScript. Full skill: https://clawhub.ai/manteclaw/skills/agent-health-monitor
@@ -172,6 +174,10 @@ python3 scripts/balance-monitor.py
 - **0 credential files read** — env vars only
 
 ## Changelog
+
+### v1.0.2 — 2026-11-19 (rescan follow-up)
+
+- Declared the full tool scope in the frontmatter (`permissions: [env, file_read, file_write, network, shell]`) — the v1.0.1 list omitted `env` and `file_write`, which the rescan flagged as HIGH LP1. No code change; behavior is identical to v1.0.1.
 
 ### v1.0.1 — 2026-11-18 (security audit remediation)
 
