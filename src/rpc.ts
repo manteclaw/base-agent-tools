@@ -1,6 +1,16 @@
 /**
  * Minimal JSON-RPC client for the public Base endpoint.
  * No API keys, no signing, no transaction submission — read-only calls only.
+ *
+ * Security boundary: upstream RPC error text is UNTRUSTED and must never
+ * reach the model as tool output. A compromised or malicious RPC endpoint
+ * could put instructions in an error message, and tool results flow
+ * straight into the model's context (prompt-injection channel — this was
+ * ClawScan's finding on v1.0.0). So every failure raised here carries a
+ * fixed message: at most the RPC method name, the numeric HTTP status,
+ * or a numeric JSON-RPC error code. The real upstream text is never
+ * attached to the thrown error; callers that want it for debugging must
+ * log the underlying error server-side, never return it.
  */
 
 export const DEFAULT_RPC_URL = "https://mainnet.base.org";
@@ -37,9 +47,13 @@ export async function rpcCall<T>(
       error?: { message?: string; code?: number };
     };
     if (data.error) {
-      throw new RpcError(
-        `Base RPC ${method} error ${data.error.code ?? ""}: ${data.error.message ?? "unknown"}`,
-      );
+      // Fixed message only — never data.error.message (untrusted upstream
+      // text; see header comment). A numeric error code is safe to keep.
+      const code =
+        typeof data.error.code === "number"
+          ? ` (code ${data.error.code})`
+          : "";
+      throw new RpcError(`Base RPC ${method} returned an error${code}`);
     }
     if (data.result === undefined || data.result === null) {
       if (opts?.allowNull) return null as T;
@@ -51,7 +65,9 @@ export async function rpcCall<T>(
     if ((err as Error).name === "AbortError") {
       throw new RpcError(`Base RPC ${method} timed out after ${timeoutMs}ms`);
     }
-    throw new RpcError(`Base RPC ${method} failed: ${(err as Error).message}`);
+    // Fixed message only. Fetch/parse errors can carry upstream response
+    // bytes in their message, so the raw text is never propagated.
+    throw new RpcError(`Base RPC ${method} request failed`);
   } finally {
     clearTimeout(timer);
   }
