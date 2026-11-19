@@ -1,6 +1,9 @@
 ---
 name: gas-price-predictor
-version: 1.0.1
+version: 1.0.2
+permissions:
+  - env
+  - network
 description: Predict optimal gas prices for Base L2 transactions using historical block analysis and moving-average trends. Use when an agent needs to minimize gas costs, time transactions efficiently, or automate gas price selection for DeFi operations on Base L2.
 ---
 > **Plugin note:** this skill doc ships inside the `manteclaw-base-agent-tools` ClawHub plugin, which provides the same capabilities as native agent tools (no Python, no API keys, no transaction execution). The `.py` and shell scripts named below belong to the standalone skill on ClawHub and are not bundled in the plugin — the plugin implements them in TypeScript. Full skill: https://clawhub.ai/manteclaw/skills/gas-price-predictor
@@ -127,6 +130,10 @@ endpoints are accepted.
   of untrusted data, no transaction signing or submission.
 
 ## Changelog
+
+### v1.0.2 — 2026-11-19 (rescan follow-up)
+
+- Declared the tool scope in machine-readable form (`permissions: [env, network]` in the frontmatter) so the ClawHub scanner no longer flags the skill for undeclared scope (LP3). No code change; behavior is identical to v1.0.1.
 
 ### v1.0.1 — 2026-11-18 (security patch)
 
