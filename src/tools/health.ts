@@ -62,12 +62,14 @@ export async function checkHealth(
         ? "reachable, chain 8453 (Base)"
         : `reachable but wrong chain: ${hexToNumber(chainId)} (expected 8453)`,
     });
-  } catch (err) {
+  } catch {
     rpcOk = false;
+    // Fixed detail only — never the upstream error text (untrusted; it
+    // would reach the model as tool output — see rpc.ts header).
     checks.push({
       name: "Base RPC",
       ok: false,
-      detail: `unreachable: ${(err as Error).message}`,
+      detail: "unreachable: request failed",
     });
   }
 
@@ -92,11 +94,11 @@ export async function checkHealth(
           ? `block ${blockNumber.toLocaleString("en-US")}, ${ageSec}s old`
           : `block ${blockNumber.toLocaleString("en-US")} is stale (${ageSec}s old)`,
       });
-    } catch (err) {
+    } catch {
       checks.push({
         name: "Latest block",
         ok: false,
-        detail: `check failed: ${(err as Error).message}`,
+        detail: "check failed: request did not complete",
       });
     }
   }
@@ -104,10 +106,11 @@ export async function checkHealth(
   // 3. Optional wallet balance (read-only).
   if (walletAddress !== undefined) {
     if (!isAddress(walletAddress)) {
+      // Fixed detail — never echo the supplied value back.
       checks.push({
         name: "Wallet balance",
         ok: false,
-        detail: `"${walletAddress}" is not a valid 0x address`,
+        detail: "not a valid 0x address (expected 0x + 40 hex chars)",
       });
     } else if (rpcOk) {
       try {
@@ -124,11 +127,11 @@ export async function checkHealth(
             ? `${balanceEth.toFixed(6)} ETH (>= ${minBalanceEth} ETH minimum)`
             : `${balanceEth.toFixed(6)} ETH is below the ${minBalanceEth} ETH minimum — low gas`,
         });
-      } catch (err) {
+      } catch {
         checks.push({
           name: "Wallet balance",
           ok: false,
-          detail: `check failed: ${(err as Error).message}`,
+          detail: "check failed: request did not complete",
         });
       }
     }
